@@ -16,32 +16,40 @@ terraform {
 }
 
 provider "aws" {
-  region = "us-west-2"
+  region  = "us-west-1"
+  profile = "my-profile"
+
 }
 
-resource "random_pet" "sg" {}
-
-data "aws_ami" "ubuntu" {
-  most_recent = true
-
-  filter {
-    name   = "name"
-    values = ["ubuntu/images/hvm-ssd/ubuntu-focal-20.04-amd64-server-*"]
-  }
-
-  filter {
-    name   = "virtualization-type"
-    values = ["hvm"]
-  }
-
-  owners = ["099720109477"] # Canonical
+# creating vpc
+resource "aws_vpc" "tf_auto_vpc" {
+  cidr_block = "10.0.0.0/16"
 }
 
-resource "aws_instance" "web" {
-  ami                    = data.aws_ami.ubuntu.id
-  instance_type          = "t2.micro"
-  vpc_security_group_ids = [aws_security_group.web-sg.id]
+# creating a subnet
+resource "aws_subnet" "tf_auto_subnet" {
+  vpc_id                  = "aws_vpc.tf_auto_vpc.id"
+  cidr_block              = "10.0.0.0/16"
+  availability_zone       = "us-west-1"
+  map_public_ip_on_launch = true
+}
 
+# creating security group
+resource "aws_security_group" "tf_auto_sg" {
+  name        = "terraform_automation_sg"
+  description = "Security Group for terraform automation"
+}
+
+## creating ec2 instance (ubuntu )
+resource "aws_instance" "tf_auto_instance" {
+  ami           = "ami-0f8e81a3da6e2510a"
+  instance_type = "t2.micro"
+  tags = {
+    "Name" = "Ayoterraform-automation-instance1"
+  }
+
+
+  ## installing packages on the instance
   user_data = <<-EOF
               #!/bin/bash
               apt-get update
