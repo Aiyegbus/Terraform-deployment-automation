@@ -1,48 +1,74 @@
-## the provider
+# Copyright (c) HashiCorp, Inc.
+# SPDX-License-Identifier: MPL-2.0
+
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "4.52.0"
+    }
+    random = {
+      source  = "hashicorp/random"
+      version = "3.4.3"
+    }
+  }
+  required_version = ">= 1.1.0"
+}
+
 provider "aws" {
-  region  = "us-west-1"
-  profile = "my-profile"
-
+  region = "us-west-1"
 }
 
-# creating vpc
-resource "aws_vpc" "tf_auto_vpc" {
-  cidr_block = "10.0.0.0/16"
-}
+resource "random_pet" "sg" {}
 
-# creating a subnet
-resource "aws_subnet" "tf_auto_subnet" {
-  vpc_id                  = "aws_vpc.tf_auto_vpc.id"
-  cidr_block              = "10.0.0.0/16"
-  availability_zone       = "us-west-1"
-  map_public_ip_on_launch = true
-}
+data "aws_ami" "ubuntu" {
+  most_recent = true
 
-# creating security group
-resource "aws_security_group" "tf_auto_sg" {
-  name        = "terraform_automation_sg"
-  description = "Security Group for terraform automation"
-}
-
-## creating ec2 instance (ubuntu )
-resource "aws_instance" "tf_auto_instance" {
-  ami           = "ami-0f8e81a3da6e2510a"
-  instance_type = "t2.micro"
-  tags = {
-    "Name" = "Ayoterraform-automation-instance1"
+  filter {
+    name   = "name"
+    values = ["ubuntu/images/hvm-ssd/ubuntu-focal-20.04-amd64-server-*"]
   }
 
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
 
-  ## installing packages on the instance
-  user_data = <<-EOF
-  #!/bin/bash
-  sudo apt update -y
-  sudo apt install nginx -y
-  sudo systemctl start nginx
-  sudo systemctl enable nginx
-  sudo apt install npm -y
-  EOF
-
+  owners = ["099720109477"] # Canonical
 }
 
+resource "aws_instance" "web" {
+  ami                    = data.aws_ami.ubuntu.id
+  instance_type          = "t2.micro"
+  vpc_security_group_ids = [aws_security_group.web-sg.id]
 
+  user_data = <<-EOF
+              #!/bin/bash
+              apt-get update
+              apt-get install -y apache2
+              sed -i -e 's/80/8080/' /etc/apache2/ports.conf
+              echo "Hello World" > /var/www/html/index.html
+              systemctl restart apache2
+              EOF
+}
+
+resource "aws_security_group" "web-sg" {
+  name = "${random_pet.sg.id}-sg"
+  ingress {
+    from_port   = 8080
+    to_port     = 8080
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  // connectivity to ubuntu mirrors is required to run `apt-get update` and `apt-get install apache2`
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+output "web-address" {
+  value = "${aws_instance.web.public_dns}:8080"
+}
