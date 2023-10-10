@@ -1,6 +1,7 @@
 ## the provider
 provider "aws" {
-  region = "us-west-1"
+  region  = "us-west-1"
+  profile = "my-profile"
 
 }
 
