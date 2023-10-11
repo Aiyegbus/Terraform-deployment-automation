@@ -27,7 +27,7 @@ resource "random_pet" "sg" {}
 resource "aws_instance" "tf_auto_instance" {
   ami                    = "ami-0f8e81a3da6e2510a"
   instance_type          = "t2.micro"
-  vpc_security_group_ids = [aws_security_group.web-sg.id]
+  vpc_security_group_ids = [aws_security_group.tf_auto_instance-sg.id]
   tags = {
     "Name" = "Ayoterraform-automation-instance1"
   }
