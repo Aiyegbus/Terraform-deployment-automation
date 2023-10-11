@@ -20,11 +20,14 @@ provider "aws" {
 
 }
 
+resource "random_pet" "sg" {}
+
 
 ## creating ec2 instance (ubuntu )
 resource "aws_instance" "tf_auto_instance" {
-  ami           = "ami-0f8e81a3da6e2510a"
-  instance_type = "t2.micro"
+  ami                    = "ami-0f8e81a3da6e2510a"
+  instance_type          = "t2.micro"
+  vpc_security_group_ids = [aws_security_group.web-sg.id]
   tags = {
     "Name" = "Ayoterraform-automation-instance1"
   }
@@ -41,7 +44,7 @@ resource "aws_instance" "tf_auto_instance" {
               EOF
 }
 
-resource "aws_security_group" "web-sg" {
+resource "aws_security_group" "tf_auto_instance-sg" {
   name = "${random_pet.sg.id}-sg"
   ingress {
     from_port   = 8080
@@ -59,5 +62,5 @@ resource "aws_security_group" "web-sg" {
 }
 
 output "web-address" {
-  value = "${aws_instance.web.public_dns}:8080"
+  value = "${aws_instance.tf_auto_instance.public_dns}:8080"
 }
